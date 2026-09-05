@@ -15,6 +15,26 @@ import {
 import { toPng, toBlob } from 'html-to-image';
 import { Poem } from '../types';
 
+const GOOGLE_FONTS_CSS_URL =
+  'https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap';
+
+let cachedFontCss: string | null = null;
+
+async function getFontEmbedCSS(): Promise<string> {
+  if (cachedFontCss !== null) return cachedFontCss;
+  try {
+    const res = await fetch(GOOGLE_FONTS_CSS_URL);
+    if (res.ok) {
+      cachedFontCss = await res.text();
+      return cachedFontCss;
+    }
+  } catch (err) {
+    console.warn('Font CSS preload skipped:', err);
+  }
+  cachedFontCss = '';
+  return '';
+}
+
 interface QuoteModalProps {
   poem: Poem | null;
   stanzaText?: string;
@@ -95,6 +115,17 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
     }
   };
 
+  // Safe capture options to embed Google Fonts and prevent cssRules CORS errors
+  const getCaptureOptions = async () => {
+    const fontCss = await getFontEmbedCSS();
+    return {
+      cacheBust: true,
+      backgroundColor: themeStyles.bg,
+      fontEmbedCSS: fontCss || undefined,
+      skipFonts: !fontCss,
+    };
+  };
+
   // Generate PNG Data URL
   const generatePngDataUrl = async (): Promise<string | null> => {
     if (!cardRef.current) return null;
@@ -104,11 +135,11 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
     // Small delay to ensure all CSS paint cycles complete
     await new Promise((resolve) => setTimeout(resolve, 100));
 
+    const captureOptions = await getCaptureOptions();
     return await toPng(cardRef.current, {
       pixelRatio: 2.5, // Crisp 2.5x high-res for social feeds
       quality: 0.98,
-      cacheBust: true,
-      backgroundColor: themeStyles.bg,
+      ...captureOptions,
     });
   };
 
@@ -154,10 +185,11 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
       if (document.fonts && document.fonts.ready) {
         await document.fonts.ready;
       }
+      const captureOptions = await getCaptureOptions();
       const blob = await toBlob(cardRef.current, {
         pixelRatio: 2.5,
         quality: 0.98,
-        cacheBust: true,
+        ...captureOptions,
       });
 
       const fileName = `${poem.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-kard.png`;
@@ -202,10 +234,11 @@ export const QuoteModal: React.FC<QuoteModalProps> = ({
       if (document.fonts && document.fonts.ready) {
         await document.fonts.ready;
       }
+      const captureOptions = await getCaptureOptions();
       const blob = await toBlob(cardRef.current, {
         pixelRatio: 2,
         quality: 0.95,
-        cacheBust: true,
+        ...captureOptions,
       });
 
       if (blob && navigator.clipboard && 'write' in navigator.clipboard && window.ClipboardItem) {
