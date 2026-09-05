@@ -1,0 +1,6 @@
+{
+  "name": "Mga Liham at Gunita",
+  "description": "Sinupan ng mga tula, liham, at gunita — mga salitang tinangay ng hangin na tinipon muli.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
